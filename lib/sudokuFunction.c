@@ -3,7 +3,18 @@
 //
 #include "../include/sudokuFunction.h"
 
+int rdtsc()
+{
+    __asm__ __volatile__("rdtsc");
+}
+
 void init_sudoku(short **tab, short size){
+
+    tab=malloc(size*sizeof(short *));
+    for(short i=0 ; i<size ;i++){
+        tab[i]=malloc(size*sizeof(short));
+    }
+
     for(short i=0 ; i < size ; i++) {
         for (short j = 0; j < size; j++) {
             tab[i][j] = 0;
@@ -115,7 +126,41 @@ value get_value_2(short **tab, short i, short j, short size){
     return return_value;
 }
 
-BOOL check_lign(short **tab, short i, short j, short tirrage){
+value get_value_3(short **tab, short i, short j, short size){
+    short tab_value[size];
+    short x1, y1;
+    value return_value;
+
+    return_value.nb=0;
+    return_value.val_restante = malloc(sizeof(short)*size);
+    for(short z=0; z<size; z++){
+        tab_value[z]=0;
+        return_value.val_restante[z]=-1;
+    }
+    for(short z=1; z<=size; z++){
+        y1=(short)(i-i%(short)sqrt(size));
+        x1=(short)(j-j%(short)sqrt(size));
+        // LECTURE CASE
+        for(short a=y1  ; a < y1+(short)sqrt(size) ; a++){
+            for(short b=x1 ; b < x1+(short)sqrt(size) ; b++){
+                if(z == tab[a][b])
+                    tab_value[z-1]=1;
+            }
+        }
+        // LECTURE COLONNE ET LIGNE
+        for(short a=0 ; a < size ; a++){
+            if(z == tab[a][j] || z == tab[i][a])
+                tab_value[z-1]=1;
+        }
+    }
+    return_value.nb=0;
+    for(short z=0; z<size; z++){
+        return_value.val_restante[return_value.nb++]=tab_value[z];
+    }
+    return return_value;
+}
+
+MINE_BOOLEAN check_lign(short **tab, short i, short j, short tirrage){
     for(short a=0 ; a < i ; a++){
         if(tirrage == tab[a][j])
             return FALSE;
@@ -123,7 +168,7 @@ BOOL check_lign(short **tab, short i, short j, short tirrage){
     return TRUE;
 }
 
-BOOL check_col(short **tab, short i, short j, short tirrage){
+MINE_BOOLEAN check_col(short **tab, short i, short j, short tirrage){
     for(short a=0 ; a < j ; a++){
         if(tirrage == tab[i][a])
             return FALSE;
@@ -131,14 +176,14 @@ BOOL check_col(short **tab, short i, short j, short tirrage){
     return TRUE;
 }
 
-BOOL check_case(short **tab, short i, short j, short tirrage, short size){
+MINE_BOOLEAN check_case(short **tab, short i, short j, short tirrage, short size){
     short x1, y1;
 
     y1=(short)(i-i%(short)sqrt(size));
     x1=(short)(j-j%(short)sqrt(size));
     for(short a= y1 ; a < i ; a++){
         if(a!=i){
-            for(short b=x1 ; b < x1+3 ; b++){
+            for(short b=x1 ; b < x1+(short)sqrt(size) ; b++){
                 if(tirrage == tab[a][b])
                     return FALSE;
             }
@@ -162,7 +207,7 @@ void create_sudoku_grid(short **tab, short size){
             do{
                 test=get_value(tab,i,j,size);
                 if(test.nb==0){
-                    for(short a=0 ; a<j ; a++)
+                    for(short a=0 ; a<=j ; a++)
                         tab[i][a]=0;
                     j=-1;
                 }
@@ -183,6 +228,8 @@ void blank_space(short **tab, short nb_blank, short size){
     short random, val;
     short *tab1, *tab2;
 
+    srand(rdtsc());
+
     tab1 = malloc(sizeof(short)*taille);
     tab2 = malloc(sizeof(short)*taille);
 
@@ -197,7 +244,7 @@ void blank_space(short **tab, short nb_blank, short size){
         random=random%(taille);
         val = tab2[random];
         tab1[val]=1;
-        tab[val/9][val%9]=0;
+        tab[val/size][val%size]=0;
     }
 }
 
@@ -212,7 +259,7 @@ short no_zero(short **tab, short size){
     return nb;
 };
 
-BOOL resolve_sudoku(short **tab, short size){
+MINE_BOOLEAN resolve_sudoku(short **tab, short size){
     short **tabTest;
     short repetition, old_value, new_value;
     value val;
@@ -256,8 +303,104 @@ BOOL resolve_sudoku(short **tab, short size){
     while(new_value!=0 && repetition<=10);
     if(new_value==0)
         return TRUE;
-    else
+    else {
+        //read_sudoku(tabTest,size);
         return FALSE;
+    }
+}
+
+MINE_BOOLEAN resolve_sudoku_2(short **tab, short size){
+    short **tabTest, **nb_maquant;
+    short x1, y1, racine, test, x, y, cases;
+    short repetition, old_value, new_value;
+    value val;
+
+    repetition=0;
+    old_value=-1;
+    racine=(short)sqrt(size);
+
+    tabTest=malloc(size*sizeof(short *));
+    nb_maquant=malloc(size*sizeof(short *));
+    for(short i=0 ; i<size ; i++) {
+        tabTest[i]=malloc(size*sizeof(short));
+        nb_maquant[i]=malloc(size*sizeof(short));
+    }
+
+    for(short i=0 ; i<size ; i++) {
+        for (short j = 0; j < size; j++) {
+            tabTest[i][j]=tab[i][j];
+            nb_maquant[i][j]=-1;
+        }
+    }
+
+    do{
+        for(short i=0 ; i<size ; i++){
+            for(short j=0 ; j<size ; j++){
+                if(tabTest[i][j]==0){
+                    val=get_value_2(tabTest,i,j,size);
+                    if(val.nb==1){
+                        //printf("value=%hd | x=%hd | y=%hd\n",val.val_restante[0],j,i);
+                        tabTest[i][j]=val.val_restante[0];
+                        //read_sudoku(tabTest,size);
+                    }
+                }
+            }
+        }
+        for(short i=0 ; i<size ; i++){
+            cases=0;
+            x1=(short)(i%racine);
+            y1=(short)(i/racine);
+            for(short j=x1*racine ; j<(x1+1)*racine ; j++){
+                for(short k=y1*racine ; k<(y1+1)*racine ; k++) {
+                    if (tabTest[k][j] == 0) {
+                        val = get_value_3(tabTest, i, j, size);
+                        for(short l=0 ; l<size ; l++) {
+                            nb_maquant[cases][l] = val.val_restante[l];
+                        }
+                    }
+                    else{
+                        for(short l=0 ; l<size ; l++) {
+                            nb_maquant[cases][l] = -1;
+                        }
+                    }
+                    cases++;
+                }
+            }
+            for(short l=0 ; l<size ; l++) {
+                test=0;
+                for (short j = 0; j < size; j++) {
+                    if (nb_maquant[j][l] == -1){
+                        break;
+                    }
+                    else if (nb_maquant[j][l] == 0){
+                        test++;
+                        x=x1*racine+(short)(j%racine);
+                        y=y1*racine+(short)(j/racine);
+                    }
+                }
+                if(test==1){
+                    //printf("value=%hd | x=%hd | y=%hd\n",l,x,y);
+                    tabTest[y][x]=l;
+                    //read_sudoku(tabTest,size);
+                }
+            }
+        }
+        new_value=no_zero(tabTest,size);
+        if(old_value==new_value){
+            repetition++;
+        }
+        else{
+            old_value=new_value;
+            repetition=0;
+        }
+    }
+    while(new_value!=0 && repetition<=10);
+    if(new_value==0)
+        return TRUE;
+    else {
+        //read_sudoku(tabTest,size);
+        return FALSE;
+    }
 }
 
 void init_test_sudoku(short **tab){
@@ -281,18 +424,22 @@ void copy_sudoku(short **sudoku1, short **sudoku2, short size){
 }
 
 void create_sudoku(short **sudoku, short **sudoku_full, short size, short empty){
+    init_sudoku(sudoku,size);
+    init_sudoku(sudoku_full,size);
+    create_sudoku_grid(sudoku,size);
+    copy_sudoku(sudoku,sudoku_full,size);
     do{
 #ifdef DEBUG
         init_test_sudoku(tab);
         read_sudoku(tab,size);
 #else
-        init_sudoku(sudoku,size);
-        create_sudoku_grid(sudoku,size);
-        copy_sudoku(sudoku,sudoku_full,size);
+        copy_sudoku(sudoku_full,sudoku,size);
         blank_space(sudoku,empty,size);
+        //printf("\n\n#########################################\n\n");
+        //read_sudoku(sudoku,size);
 #endif
     }
-    while(resolve_sudoku(sudoku,size)==FALSE);
+    while(resolve_sudoku_2(sudoku,size)==FALSE);
 }
 
 
